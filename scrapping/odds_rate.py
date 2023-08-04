@@ -14,10 +14,10 @@ decoding_key = "aJI3VsNcr69ZG2FR5dx8EilBOhjmaX1EiM2d9IxjjbqSIBGliVc7U2hT3+bNdINT
 
 
 # 경주기록정보
-url = "http://apis.data.go.kr/B551015/API4_2/raceResult_2"
+url = "http://apis.data.go.kr/B551015/API160_1/integratedInfo_1"
 
 
-file_names = open('../data/file_names/seoul_racing_results_file_names.txt', 'r').read()
+file_names = open('../data/file_names/tk_racing_results_file_names.txt', 'r').read()
 
 # change \n to \t
 file_names = re.sub('\n', ' ', file_names)
@@ -37,24 +37,25 @@ for idx, i in enumerate(file_names):
 
 result_df = pd.DataFrame()
 for date in file_list:
-    for i in range(1, 5):
-        try:
-            params = {
-                "serviceKey": decoding_key,
-                "pageNo": 1,
-                "numOfRows": 20,
-                "meet": 2,
-                "rc_date": date,
-                "rc_no": i,
-                "_type": "json"
-            }
+    try:
+        params = {
+            "serviceKey": decoding_key,
+            "pageNo": 1,
+            "numOfRows": 200000,
+            "meet": 3,
+            "rc_date": date,
+            "_type": "json"
+        }
 
-            df = json2pandas(url, params)
-            result_df = pd.concat([result_df, df])
-        except:
-            continue
-
+        df = json2pandas(url, params)
         print(df)
-        time.sleep(1)
+        result_df = pd.concat([result_df, df])
+    except:
+        continue
 
-result_df.to_csv('../data/racing_results/preprocessed/jeju/jeju_racing_results.csv', index=False, encoding='utf-8-sig')
+    print(df)
+    time.sleep(1)
+
+
+
+result_df.to_csv('../data/odds/busan/busan_racing_odds.csv', index=False, encoding='utf-8-sig')
