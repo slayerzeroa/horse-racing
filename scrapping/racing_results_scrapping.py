@@ -75,7 +75,7 @@ for date in file_list:
 print('All done')
 
 # 경북
-file_names = open('../data/file_names/tk_racing_results_file_names.txt', 'r').read()
+file_names = open('../data/file_names/busan_racing_results_file_names.txt', 'r').read()
 
 # change \n to \t
 file_names = re.sub('\n', ' ', file_names)

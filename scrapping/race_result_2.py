@@ -12,8 +12,7 @@ import time
 encoding_key = "aJI3VsNcr69ZG2FR5dx8EilBOhjmaX1EiM2d9IxjjbqSIBGliVc7U2hT3%2BbNdINTAIQFTzdMNfpD%2FaemMvFyVQ%3D%3D"
 decoding_key = "aJI3VsNcr69ZG2FR5dx8EilBOhjmaX1EiM2d9IxjjbqSIBGliVc7U2hT3+bNdINTAIQFTzdMNfpD/aemMvFyVQ=="
 
-
-# 경주기록정보
+# 한국마사회 경주기록 정보
 url = "http://apis.data.go.kr/B551015/API4_2/raceResult_2"
 
 

@@ -17,7 +17,7 @@ decoding_key = "aJI3VsNcr69ZG2FR5dx8EilBOhjmaX1EiM2d9IxjjbqSIBGliVc7U2hT3+bNdINT
 url = "http://apis.data.go.kr/B551015/API160_1/integratedInfo_1"
 
 
-file_names = open('../data/file_names/tk_racing_results_file_names.txt', 'r').read()
+file_names = open('../data/file_names/busan_racing_results_file_names.txt', 'r').read()
 
 # change \n to \t
 file_names = re.sub('\n', ' ', file_names)
