@@ -1,25 +1,14 @@
-# import re
-# import pandas as pd
-# from io import StringIO
-#
-# # read file names
-# file = open('../data/racing_results/raw_text/seoul/seoul_20230722.txt', 'r').read()
-#
-# file = re.sub(' +', ' ', file)
-# file = re.sub('\n+', '\n', file)
-# file = re.sub('-+', '-', file)
+import pandas as pd
+
+# seoul_dataset = pd.read_csv('../data/racing_results/preprocessed/seoul/seoul_racing_results.csv')
 #
 #
+# seoul_dataset['rcDate'] = seoul_dataset['rcDate'].apply(lambda x: x[:4] + x[5:7] + x[8:])
 #
-# file = file.split('-')
 #
-#
-# TESTDATA = StringIO(file[2])
-#
-# df = pd.read_csv(TESTDATA, sep=" ", header=None, names=['순위', '마번', '마명', '산지', '성별', '연령', '부담중량', '기수명', '조교사', '마주명', '레이팅'])
-# df.reset_index(drop=True, inplace=True)
-# print(df)
+# seoul_dataset.to_csv('../data/racing_results/preprocessed/seoul/seoul_racing_results.csv', index=False)
 
 
-for i in range(1, 4):
-    print(i)
+merged_dataset = pd.read_csv('../data/racing_results/preprocessed/seoul/merged_seoul_racing_results.csv')
+pd.set_option('display.max_columns', None)
+print(merged_dataset.iloc[100:110, :])
