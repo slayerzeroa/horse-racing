@@ -15,7 +15,7 @@ from lightgbm import LGBMRegressor
 pd.set_option('display.max_columns', None)
 
 # Importing the dataset
-df = pd.read_csv('data/racing_results/preprocessed/seoul/merged_seoul_racing_results.csv')
+df = pd.read_csv('data/datasets/racing_results/preprocessed/seoul/merged_seoul_racing_results.csv')
 # pd.set_option('display.max_columns', None)
 # print(df)
 
@@ -40,11 +40,12 @@ data['rcUnique'] = le.fit_transform(data['rcUnique'])
 data['sex'] = le.fit_transform(data['sex'])
 
 # drop rcDate
-data.drop(['rcDate', 'rcNo', 'rcTime', 'speed'], axis=1, inplace=True)
+data.drop(['rcDate', 'rcNo', 'rcTime', 'jkName', 'hrName'], axis=1, inplace=True)
 
 # rcDate_diff str -> float
 data['rcDate_diff'] = data['rcDate_diff'].apply(lambda x: float('nan') if type(x) != str else float(x[:-5]))
 data['rcDate_diff'] = data['rcDate_diff'].fillna(99999)
+# data['rcDate_diff'] = data['rcDate_diff'].dropna()
 # print(data['rcDate_diff'])
 
 data = data.dropna()
@@ -57,7 +58,7 @@ y = data.ord.values
 X_train, X_test, y_train, y_test = train_test_split(X, y, shuffle=False, test_size=0.2, random_state=0)
 
 # Fitting LGBM Regression to the dataset
-regressor = LGBMRegressor(learning_rate=0.005, n_estimators=200, max_depth=4, random_state=0)
+regressor = LGBMRegressor(learning_rate=0.005, n_estimators=300, max_depth=4, random_state=0)
 regressor.fit(X_train, y_train)
 
 
