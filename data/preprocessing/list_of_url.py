@@ -1,0 +1,1 @@
+urls = {"기수성적":"http://apis.data.go.kr/B551015/API11_1/jockeyResult_1", "경주마성적":"http://apis.data.go.kr/B551015/API15_2/raceHorseResult_2", "확정배당율":"http://apis.data.go.kr/B551015/API160_1/integratedInfo_1", }
