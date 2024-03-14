@@ -66,7 +66,7 @@ X_train, X_test, y_train, y_test = train_test_split(X.values, y.values, shuffle=
 
 
 # Fitting Random Forest Regression to the dataset
-classifier = RandomForestClassifier(n_estimators=1000, random_state=0, max_features=5, max_depth=5, min_samples_leaf=5)
+classifier = RandomForestClassifier(n_estimators=100, random_state=0, max_features=5, max_depth=5, min_samples_leaf=5)
 classifier.fit(X_train, y_train)
 
 # Predicting a new result
