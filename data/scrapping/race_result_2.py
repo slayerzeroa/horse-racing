@@ -1,10 +1,9 @@
 import requests
-import json, pandas as pd
+import json
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode, quote_plus
 import pandas as pd
-from json_to_pandas import json2pandas
-from list_of_url import urls
+from tools import *
 import re
 import time
 
@@ -16,7 +15,7 @@ decoding_key = "aJI3VsNcr69ZG2FR5dx8EilBOhjmaX1EiM2d9IxjjbqSIBGliVc7U2hT3+bNdINT
 url = "http://apis.data.go.kr/B551015/API4_2/raceResult_2"
 
 
-file_names = open('../data/file_names/seoul_racing_results_file_names.txt', 'r').read()
+file_names = open('../datasets/file_names/seoul_racing_results_file_names.txt', 'r').read()
 
 # change \n to \t
 file_names = re.sub('\n', ' ', file_names)
@@ -56,4 +55,4 @@ for date in file_list:
         print(df)
         time.sleep(1)
 
-result_df.to_csv('../data/racing_results/preprocessed/jeju/jeju_racing_results.csv', index=False, encoding='utf-8-sig')
+# result_df.to_csv('../data/racing_results/preprocessed/jeju/jeju_racing_results.csv', index=False, encoding='utf-8-sig')
