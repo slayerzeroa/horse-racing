@@ -56,3 +56,11 @@ def preprocess_rcNo(x):
         return '0' + str(x)
     else:
         return str(x)
+
+# value값이 None이면 해당 key를 제외하는 함수
+def exclude_none(params):
+    result = {}
+    for key, value in params.items():
+        if value is not None:
+            result[key] = value
+    return result
