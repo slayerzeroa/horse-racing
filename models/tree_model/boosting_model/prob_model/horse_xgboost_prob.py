@@ -11,14 +11,11 @@ from sklearn.metrics import mean_squared_error, accuracy_score
 import xgboost as xgb
 from lightgbm import LGBMRegressor
 import matplotlib.pyplot as plt
-
-from data.db.kra_db import get_modelData_from_db, get_modelData_period
-
-# import seaborn as sns
 #
-# sns.set_palette('coolwarm')
+# from data.db.kra_db import get_modelData_from_db, get_period_modelData
 
-# pandas all columns display
+from kra import *
+
 pd.set_option('display.max_columns', None)
 
 def preprocess_for_train(df):
@@ -92,69 +89,81 @@ def fit_rank(x):
     return [1 if i == x.max() else 0 for i in x]
 
 
-
-# 데이터 로드
-df = get_modelData_from_db(meet=1)
-
-X, y = preprocess_for_train(df)
-X_columns = X.columns
-
-
-# train, test split
-X_train, X_test, y_train, y_test = train_test_split(X.values, y.values, shuffle=False, test_size=0.2, random_state=0)
-
-# For binary classification
-param = {'objective': 'binary:logistic', 'eval_metric': 'logloss'}
-
-# Fitting XGBoost Classifier to the dataset
-classifier = xgb.XGBClassifier(n_estimators=1000, random_state=42, max_depth=6, learning_rate=0.01)
-classifier.fit(X_train, y_train)
-
-# For binary classification
-preds_proba = classifier.predict_proba(X_test)[:, 1]
-
-# print(preds_proba)
-df_test = pd.DataFrame(X_test, columns=X.columns)
-df_test['winprob'] = preds_proba
-
-## softmax to df_test['winprob'] by df_test['rcId']
-df_test['winprob'] = df_test.groupby('rcId')['winprob'].transform(lambda x: fit_prob(x))
-df_test['winprob'] = df_test.groupby('rcId')['winprob'].transform(lambda x: fit_rank(x))
-y_pred = df_test['winprob'].to_numpy()
-
-print('Mean Squared Error: ', mean_squared_error(y_test, y_pred))
-print('Accuracy:', accuracy_score(y_test, y_pred))
-print('When Hit 1 Accuracy:', accuracy_score(y_test[y_test==1], y_pred[y_test==1]))
-print('When Pred 1 Accuracy:', accuracy_score(y_test[y_pred==1], y_pred[y_pred==1]))
-
-# feature importance
-importance = classifier.feature_importances_
-print(importance)
-
-# feature importance visualization
-plt.bar([x for x in range(len(importance))], importance)
-plt.xticks([x for x in range(len(importance))], X_columns, rotation=90)
-plt.show()
+def train():
+    # 데이터 로드
+    df = get_modelData_from_db(meet=None)
+    X, y = preprocess_for_train(df)
+    X_columns = X.columns
 
 
-test_df = get_modelData_period(1, '20240607', '20240609')
+    # # train, test split
+    # X_train, X_test, y_train, y_test = train_test_split(X.values, y.values, shuffle=False, test_size=0.2, random_state=0)
+    X = X.values
+    y = y.values
+    # For binary classification
+    param = {'objective': 'binary:logistic', 'eval_metric': 'logloss'}
+
+    # Fitting XGBoost Classifier to the dataset
+    classifier = xgb.XGBClassifier(n_estimators=10000, random_state=42, max_depth=6, learning_rate=0.01)
+    classifier.fit(X, y)
+
+    # For binary classification
+    preds_proba = classifier.predict_proba(X)[:, 1]
+
+    # print(preds_proba)
+    df_test = pd.DataFrame(X, columns=X_columns)
+    df_test['winprob'] = preds_proba
+
+    ## softmax to df_test['winprob'] by df_test['rcId']
+    df_test['winprob'] = df_test.groupby('rcId')['winprob'].transform(lambda x: fit_prob(x))
+    df_test['winprob'] = df_test.groupby('rcId')['winprob'].transform(lambda x: fit_rank(x))
+    y_pred = df_test['winprob'].to_numpy()
+
+    print('Mean Squared Error: ', mean_squared_error(y, y_pred))
+    print('Accuracy:', accuracy_score(y, y_pred))
+    print('When Hit 1 Accuracy:', accuracy_score(y[y==1], y_pred[y==1]))
+    print('When Pred 1 Accuracy:', accuracy_score(y[y_pred==1], y_pred[y_pred==1]))
+
+    # feature importance
+    importance = classifier.feature_importances_
+    print(importance)
+
+    return classifier
+
+def predict(test_df, classifier):
+    X_test, y_test = preprocess_for_test(test_df)
+    X_test = X_test.to_numpy()
 
 
-X_test, y_test = preprocess_for_test(test_df)
-X_test = X_test.to_numpy()
+    # binary classification prediction
+    preds_proba = classifier.predict_proba(X_test)[:, 1]
+
+    test_df['winprob'] = preds_proba
+
+    ## softmax to df_test['winprob'] by df_test['rcId']
+    test_df['winprob'] = test_df.groupby('rcId')['winprob'].transform(lambda x: fit_prob(x))
+    test_df['winprob'] = test_df.groupby('rcId')['winprob'].transform(lambda x: fit_rank(x))
+    y_pred = test_df['winprob'].to_numpy()
+
+    test_df['pred'] = y_pred
+
+    pd.set_option('display.max_rows', None)
+    return(test_df[['rcId', 'hrName', 'winprob', 'pred']])
 
 
-# binary classification prediction
-preds_proba = classifier.predict_proba(X_test)[:, 1]
+# 숙제: 모델 불러와서 추가 데이터 학습
 
-test_df['winprob'] = preds_proba
+# classifier = train()
+# classifier.save_model('xgboost_model.json')
 
-## softmax to df_test['winprob'] by df_test['rcId']
-test_df['winprob'] = test_df.groupby('rcId')['winprob'].transform(lambda x: fit_prob(x))
-test_df['winprob'] = test_df.groupby('rcId')['winprob'].transform(lambda x: fit_rank(x))
-y_pred = test_df['winprob'].to_numpy()
+def xgb_load_model():
+    classifier = xgb.XGBClassifier()
+    classifier.load_model('C:/Users/slaye/PycharmProjects/Horse_Racing/models/tree_model/boosting_model/prob_model/xgboost_model.json')
+    return classifier
 
-test_df['pred'] = y_pred
+def get_predict_data(start, end):
+    classifier = xgb_load_model()
+    df = get_period_modelData(start, end)
+    result = predict(df, classifier)
+    return result
 
-pd.set_option('display.max_rows', None)
-print(test_df[['rcId', 'hrName', 'pred']])

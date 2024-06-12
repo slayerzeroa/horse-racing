@@ -3,6 +3,7 @@ import json, pandas as pd
 from urllib.request import Request, urlopen
 from urllib.parse import urlencode, quote_plus
 import pandas as pd
+import datetime
 
 def json2pandas(url, params):
     r = urlopen(Request(url + '?' + urlencode(params)))
@@ -10,8 +11,6 @@ def json2pandas(url, params):
     json_file = json.loads(json_api)
     df = pd.json_normalize(json_file['response']['body']['items']['item'])
     return df
-
-
 def get_api_url_list():
     urls = {"기수성적": "http://apis.data.go.kr/B551015/API11_1/jockeyResult_1",
             "경주마성적": "http://apis.data.go.kr/B551015/API15_2/raceHorseResult_2",
@@ -40,6 +39,12 @@ def get_env(env):
             db = f.readline().strip()
         return host, user, password, db
 
+    elif env == 'TELEGRAM':
+        path = ('C:/Users/slaye/PycharmProjects/Horse_Racing/env/telegram_token.txt')
+        with open(path, 'r') as f:
+            token = f.readline().strip()
+            chat_id = f.readline().strip()
+        return token, chat_id
 
 def location_to_meet(location):
     if location == '서울':
@@ -64,3 +69,18 @@ def exclude_none(params):
         if value is not None:
             result[key] = value
     return result
+
+
+def get_start_end():
+    # 오늘 날짜 연월일
+    today = datetime.datetime.today()
+    start = today
+    end = today + datetime.timedelta(days=10)
+    start = start.strftime('%Y%m%d')
+    end = end.strftime('%Y%m%d')
+    return start, end
+
+
+def filter_only_winner(df):
+    df = df[df['pred'] == 1]
+    return df
