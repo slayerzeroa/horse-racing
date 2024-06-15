@@ -500,6 +500,7 @@ def get_hrRecord(hrNo, hrName):
     result = pd.DataFrame()
     url = 'http://apis.data.go.kr/B551015/API37_1/sectionRecord_1'
 
+    # for문: 한마리 말에 대한 모든 경주기록을 가져옴
     for i in range(1, 5):
         try:
             params = {'serviceKey': decoding_key, 'pageNo': i, 'numOfRows': 50, 'hr_no':hrNo, 'hr_name':hrName, '_type': 'json'}
@@ -509,18 +510,24 @@ def get_hrRecord(hrNo, hrName):
             result = pd.concat([result, df])
         except:
             break
-
-    result['speed'] = result['rcDist'] / result['rcTime']
-    result['avg_past_speed'] = result['speed'].expanding().mean().shift(1)
-    result['rcDate_bin'] = result['rcDate'].apply(lambda x: datetime.datetime.strptime(str(x), '%Y%m%d').date())
-    result['rcDate_diff'] = result['rcDate_bin'].diff()
-    result['rcDate_diff'] = result['rcDate_diff'].apply(lambda x: x.days if isinstance(x, pd.Timedelta) else x)
-    result = result.drop(['rcDate_bin'], axis=1)
+    # print(result)
+    # 말이 첫 경기를 치르는 경우
+    if result.empty:
+        pass
+    else:
+        result['speed'] = result['rcDist'] / result['rcTime']
+        result['avg_past_speed'] = result['speed'].expanding().mean().shift(1)
+        result['rcDate_bin'] = result['rcDate'].apply(lambda x: datetime.datetime.strptime(str(x), '%Y%m%d').date())
+        result['rcDate_diff'] = result['rcDate_bin'].diff()
+        result['rcDate_diff'] = result['rcDate_diff'].apply(lambda x: x.days if isinstance(x, pd.Timedelta) else x)
+        result = result.drop(['rcDate_bin'], axis=1)
     return result
 
 # average past speed, rcDate_diff
 def get_aps_rd(hrNo, hrName):
     df = get_hrRecord(hrNo, hrName)
+    if df.empty:
+        return -99999, 99999
     return df['avg_past_speed'].iloc[-1], df['rcDate_diff'].iloc[-1]
 
 
@@ -648,12 +655,15 @@ def just_update_modelData(df):
 
 # meet {1: 서울, 2: 제주, 3: 부경}
 # date = 'yyyymmdd'
-def update_rcPlan():
-    date = datetime.datetime.today()
-    for _ in range(10):
+def update_rcPlan(start, end):
+    # start to datetime from string %Y%m%d
+    start = datetime.datetime.strptime(start, '%Y%m%d')
+    end = datetime.datetime.strptime(end, '%Y%m%d')
+    while start <= end:
         for meet in [1, 2, 3]:
             try:
-                df = get_daily_rcPlan(date, meet)
+                start_str = start.strftime('%Y%m%d')
+                df = get_daily_rcPlan(start_str, meet)
 
                 host, user, password, db = get_env('DB')
 
@@ -698,8 +708,7 @@ def update_rcPlan():
                 conn.close()
             except:
                 pass
-        date += datetime.timedelta(days=1)
-
+        start += datetime.timedelta(days=1)
     return 1
 # def insert_rcResult(start=None, end=None, meet=None):
 #     df = get_period_rcResult(start, end, meet)
@@ -758,9 +767,6 @@ def update_rcPlan():
 #         curs.execute(sql)
 #
 #     conn.commit()
-
-
-
 
 def update_rcResult(start=None, end=None, meet=None):
     df = get_period_rcResult(start, end, meet)
