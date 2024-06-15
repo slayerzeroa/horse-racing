@@ -13,15 +13,21 @@ import asyncio
 # print(df)
 
 def main():
-    start, end = tools.get_start_end()
-    start = '20240615'
-    end = '20240615'
-    update_rcPlan(start, end)
-    print('rcPlan updated')
-    update_rcResult(start, end)
-    print('rcResult updated')
-    update_modelData(start, end)
-    print('modelData updated')
+    # start, end = tools.get_start_end()
+    today = datetime.datetime.today().strftime('%Y%m%d')
+    print(today)
+    start = today
+    end = today
+
+    try:
+        update_rcPlan(start, end)
+        print('rcPlan updated')
+        update_rcResult(start, end)
+        print('rcResult updated')
+        update_modelData(start, end)
+        print('modelData updated')
+    except:
+        pass
 
     try:
         df = get_predict_data(start, end)
@@ -32,8 +38,6 @@ def main():
     except:
         pass
 
-
-main()
 
 while True:
     ## 매일 00시 01분에 실행
