@@ -5,12 +5,13 @@ from urllib.parse import urlencode, quote_plus
 import pandas as pd
 import datetime
 
-def json2pandas(url, params):
-    r = urlopen(Request(url + '?' + urlencode(params)))
-    json_api = r.read().decode('utf-8')
-    json_file = json.loads(json_api)
-    df = pd.json_normalize(json_file['response']['body']['items']['item'])
+from dotenv import load_dotenv
+import os
+
+def json2df(response_json):
+    df = pd.json_normalize(response_json['response']['body']['items']['item'])
     return df
+
 def get_api_url_list():
     urls = {"기수성적": "http://apis.data.go.kr/B551015/API11_1/jockeyResult_1",
             "경주마성적": "http://apis.data.go.kr/B551015/API15_2/raceHorseResult_2",
@@ -23,28 +24,23 @@ def get_api_url_list():
 api_name: "KRA"(마사회), output: encoding_key, decoding_key
 '''
 def get_env(env):
+    load_dotenv()
     if env == 'KRA':
-        path = ('C:/Users/slaye/PycharmProjects/Horse_Racing/env/kra_api.txt')
-        with open(path, 'r') as f:
-            encoding_key = f.readline().strip()
-            decoding_key = f.readline().strip()
-        return encoding_key, decoding_key
+        KRA_ENCODING = os.getenv("KRA_ENCODING")
+        KRA_DECODING = os.getenv("KRA_DECODING")
+        return KRA_ENCODING, KRA_DECODING
 
     elif env == 'DB':
-        path = ('C:/Users/slaye/PycharmProjects/Horse_Racing/env/db_env.txt')
-        with open(path, 'r') as f:
-            host = f.readline().strip()
-            user = f.readline().strip()
-            password = f.readline().strip()
-            db = f.readline().strip()
-        return host, user, password, db
+        DB_HOST = os.getenv("DB_HOST")
+        DB_USER = os.getenv("DB_USER")
+        DB_PASSWORD = os.getenv("DB_PASSWORD")
+        DB_NAME = os.getenv("DB_NAME")
+        return DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
 
     elif env == 'TELEGRAM':
-        path = ('C:/Users/slaye/PycharmProjects/Horse_Racing/env/telegram_token.txt')
-        with open(path, 'r') as f:
-            token = f.readline().strip()
-            chat_id = f.readline().strip()
-        return token, chat_id
+        TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+        TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+        return TELEGRAM_TOKEN, TELEGRAM_CHAT_ID
 
 def location_to_meet(location):
     if location == '서울':
@@ -84,3 +80,26 @@ def get_start_end():
 def filter_only_winner(df):
     df = df[df['pred'] == 1]
     return df
+
+
+# 이전 경기 날짜와의 차이 계산
+def cal_rcDate_diff(df):
+    # 마명 추출
+    horse_name = df['hrName'].unique().tolist()
+    # 자료형 변경
+    df['rcDate'] = df['rcDate'].apply(lambda x: datetime.strptime(str(x), '%Y%m%d').date())
+    # 빈 DataFrame 생성
+    rcDate_diff = pd.DataFrame()
+    # 마명별로 rcDate_diff 계산
+    for hrn in horse_name:
+        rcDate_diff = pd.concat([rcDate_diff, df[df['hrName'] == hrn].rcDate.diff()], axis=0)
+    rcDate_diff.sort_index(inplace=True)
+    df['rcDate_diff'] = rcDate_diff
+    return 
+
+def cal_mean_speed(speed_list):
+    mean_speed_list = []
+    for _ in range(len(speed_list)):
+        mean_speed = np.mean(speed_list[:_+1])
+        mean_speed_list.append(mean_speed)
+    return mean_speed_list

@@ -1,6 +1,6 @@
 import asyncio
 import telegram
-import tools
+from data.preprocess import tools
 
 token, chat_id = tools.get_env('TELEGRAM')
 

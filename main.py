@@ -1,13 +1,13 @@
 import pandas as pd
-from kra import *
-import tools
-import horse_racing_chatbot as chatbot
-from horse_xgboost_prob import *
+from data.api.legacy.legacy_240829 import *
+from data.preprocess import tools
+from chatbot import horse_racing_chatbot as chatbot
+from models.tree_model.boosting_model.prob_model.horse_xgboost_prob import *
 import asyncio
 
 #
-# start = '20240607'
-# end = '20240609'
+# start = '20240617'
+# end = '20240'
 #
 # df = get_predict_data(start, end)
 # print(df)

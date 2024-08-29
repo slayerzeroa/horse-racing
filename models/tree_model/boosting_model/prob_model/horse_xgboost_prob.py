@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 #
 # from data.db.kra_db import get_modelData_from_db, get_period_modelData
 
-from kra import *
+from data.api.legacy.legacy_240829 import *
 
 pd.set_option('display.max_columns', None)
 

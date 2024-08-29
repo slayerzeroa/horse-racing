@@ -1,33 +1,88 @@
 import pandas as pd
+# from data.api.legacy.legacy_240829 import *
+
+from data.api.kra_api import *
+from data.db.kra_db import *
+
+from data.preprocess import tools
+from chatbot import horse_racing_chatbot as chatbot
+from models.tree_model.boosting_model.prob_model.horse_xgboost_prob import *
+import asyncio
+import datetime
 
 
-def cal_speed(df):
-    df['speed'] = df['rcDist'] / df['rcTime']
-    return df
+def main(date:str):
+    # start, end = tools.get_start_end()
+    today = date
+    start = today
+    end = today
+
+    update_rcPlan(start, end)
+    print('rcPlan updated')
+    update_rcResult(start, end)
+    print('rcResult updated')
+    update_modelData(start, end)
+    print('modelData updated')
+
+    df = get_predict_data(start, end)
+    print(df)
+    df = tools.filter_only_winner(df)
+    print(df)
+    asyncio.run(chatbot.send_df(df))
 
 
-def calculate_past_avg_speed(df):
-    df = cal_speed(df)
+# # start = datetime 2024-06-17
+# start = '20240617'
+# start = datetime.datetime.strptime(start, '%Y%m%d').date()
 
-    # 경주일자 기준으로 정렬
-    df = df.sort_values(by=['hrName', 'rcDate'])
+# while start <= datetime.datetime.today().date():
+#     main(start.strftime('%Y%m%d'))
+#     print('horse prediction completed')
+#     print(start)
+#     print(datetime.datetime.today().date())
+#     start = start + datetime.timedelta(days=1)
 
-    # 각 말의 이전 경기들의 평균 속도를 계산
-    df['avg_past_speed'] = df.groupby('hrName')['speed'].transform(lambda x: x.expanding().mean().shift(1))
-
-    return df
 
 
-# 예시 데이터프레임
-data = {
-    'hrName': ['Horse1', 'Horse2', 'Horse1', 'Horse2', 'Horse1'],
-    'rcDist': [1000, 1200, 1100, 1300, 1200],
-    'rcTime': [60, 70, 66, 78, 72],
-    'rcDate': ['2023-01-01', '2023-01-01', '2023-01-02', '2023-01-03', '2023-01-04']
-}
 
-df = pd.DataFrame(data)
 
-# 평균 속도 계산
-result_df = calculate_past_avg_speed(df)
-print(result_df)
+
+
+# # update_rcResult(start, end)
+# rcResult_df = (get_rcResult(start))
+# print(rcResult_df)
+# modelData_df = get_modelData(rcResult_df)
+# print(modelData_df)
+
+# update_rcResult(rcResult_df)
+# print('rcResult updated')
+# update_modelData(modelData_df)
+# print('modelData updated')
+
+# print(get_daily_rcResult(3, end))
+# update_modelData(start, end)
+
+start ='20240615'
+end = '20240829'
+
+pd.set_option('display.max_columns', None)
+pd.set_option('display.max_rows', None)
+
+while start <= end:
+    try:
+        rcResult_df = (get_rcResult(start))
+        print(rcResult_df)
+        modelData_df = get_modelData(rcResult_df)
+        print(modelData_df)
+    except:
+        print('no data')
+        start = datetime.datetime.strptime(start, '%Y%m%d').date() + datetime.timedelta(days=1)
+        start = start.strftime('%Y%m%d')
+        continue
+
+    update_rcResult(rcResult_df)
+    print('rcResult updated')
+    update_modelData(modelData_df)
+    print('modelData updated')
+    start = datetime.datetime.strptime(start, '%Y%m%d').date() + datetime.timedelta(days=1)
+    start = start.strftime('%Y%m%d')
