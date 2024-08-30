@@ -149,3 +149,17 @@ def update_modelData(modelData_df: pd.DataFrame):
 
     conn.commit()
     conn.close()
+
+
+
+def load_rcResult():
+    host, user, password, db = tools.get_env('DB')
+    conn = pymysql.connect(host=host, user=user, password=password, db=db, charset='utf8mb4')
+    curs = conn.cursor()
+
+    curs.execute("SELECT * FROM rcResult")
+    rcResult_df = pd.DataFrame(curs.fetchall(), columns=[col[0] for col in curs.description])
+
+    conn.close()
+
+    return rcResult_df

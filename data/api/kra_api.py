@@ -2,6 +2,7 @@ from data.preprocess import tools
 import requests
 import datetime
 import pandas as pd
+import pymysql
 
 encoding_key, decoding_key = tools.get_env('KRA')
 
@@ -130,6 +131,13 @@ def get_rcDate(start:str=None, end:str=None, meet:str=None):
     return rcDate_list
 
 
+# average past speed, rcDate_diff
+def get_aps_rd(hrNo:str, hrName:str=None, rcDate:str=None):
+    df = get_hrRecord(hrNo=hrNo, hrName=hrName, rcDate=rcDate)
+    if df.empty:
+        return -99999, 99999
+    return df['avg_past_speed'].iloc[-1], df['rcDate_diff'].iloc[-1]
+
 
 def get_modelData(rcmodelData_df:pd.DataFrame):
     '''
@@ -138,12 +146,13 @@ def get_modelData(rcmodelData_df:pd.DataFrame):
     Output: DataFrame of modelData
     '''
     hrNo_list = rcmodelData_df['hrNo'].tolist()
+    rcDate_list = rcmodelData_df['rcDate'].tolist()
     rcmodelData_df = rcmodelData_df[['globalUnique', 'rcId', 'meet', 'hrName', 'age', 'jkName', 'weather', 'wgBudam', 'rcDate', 'rcNo', 'rcTime', 'rcDist',  'sex',  'ord', 'winOdds', 'plcOdds']]
 
     rcDate_diff_list = []
     avg_past_speed_list = []
-    for hrNo in hrNo_list:
-        aps, rd = get_aps_rd(hrNo, None)
+    for hrNo, rcDate in zip(hrNo_list, rcDate_list):
+        aps, rd = get_aps_rd(hrNo=hrNo, hrName=None, rcDate=rcDate)
         avg_past_speed_list.append(aps)
         rcDate_diff_list.append(rd)
 
@@ -159,34 +168,29 @@ def get_modelData(rcmodelData_df:pd.DataFrame):
     return rcmodelData_df
 
 
-def get_hrRecord(hrNo:str, hrName:str=None):
+def get_hrRecord_sql(hrNo:str, hrName:str=None):
 
     '''
     240829 현재 500 internal server error 발생
+    SQL을 이용하여 hrRecord를 가져오는 함수
     '''
     result = pd.DataFrame()
-    url = 'http://apis.data.go.kr/B551015/API37_1//sectionRecord_1'
+    # url = 'http://apis.data.go.kr/B551015/API37_1//sectionRecord_1'
 
-    # for문: 한마리 말에 대한 모든 경주기록을 가져옴
-    for i in range(1, 5):
-        try:
-            params = {'serviceKey': decoding_key, 'pageNo': i, 'numOfRows': 50, 'hr_no':hrNo, 'hr_name':hrName, '_type': 'json'}
-            params = tools.exclude_none(params)
+    host, user, password, db = tools.get_env('DB')
+    conn = pymysql.connect(host=host, user=user, password=password, db=db, charset='utf8mb4')
+    curs = conn.cursor()
 
-            # 통신
-            response = requests.get(url, params)
-            if response.status_code == 200:
-                response_json = response.json()
-                print("API Connected!")
-            else:
-                print(f'error {response.status_code} occurred')
-                return -1
-    
-            hrRecord_df = tools.json2df(response_json=response_json)
-            print(hrRecord_df)
-            result = pd.concat([result, hrRecord_df])
-        except:
-            break
+    curs.execute("SELECT * FROM rcResult WHERE hrNo = %s", (hrNo,))
+    hrRecord_df = pd.DataFrame(curs.fetchall(), columns=[col[0] for col in curs.description])
+
+    conn.close()
+
+    result = pd.concat([result, hrRecord_df])
+
+    result['rcDist'] = result['rcDist'].astype(int)
+    result['rcTime'] = result['rcTime'].astype(float)
+
     # print(result)
     # 말이 첫 경기를 치르는 경우
     if result.empty:
@@ -198,16 +202,83 @@ def get_hrRecord(hrNo:str, hrName:str=None):
         result['rcDate_diff'] = result['rcDate_bin'].diff()
         result['rcDate_diff'] = result['rcDate_diff'].apply(lambda x: x.days if isinstance(x, pd.Timedelta) else x)
         result = result.drop(['rcDate_bin'], axis=1)
+
+        result['rcDate_diff'] = result['rcDate_diff'].fillna(99999)
+        result['avg_past_speed'] = result['avg_past_speed'].fillna(-99999)
     return result
 
-print(get_hrRecord('0041600'))
+def get_hrRecord(hrNo:str, hrName:str=None, rcDate:str=None):
+    url = 'http://apis.data.go.kr/B551015/API37_1/sectionRecord_1'
+    result = pd.DataFrame()
 
-# average past speed, rcDate_diff
-def get_aps_rd(hrNo, hrName):
-    df = get_hrRecord(hrNo, hrName)
-    if df.empty:
-        return -99999, 99999
-    return df['avg_past_speed'].iloc[-1], df['rcDate_diff'].iloc[-1]
+    rcDate = int(rcDate) if rcDate != None else None
+    
+    # for문: 한마리 말에 대한 모든 경주기록을 가져옴
+    for i in range(1, 5):
+        try:
+            params = {'serviceKey': decoding_key, 'pageNo': i, 'numOfRows': 50, 'hr_no':hrNo, 'hr_name':hrName, '_type': 'json'}
+            params = tools.exclude_none(params)
+
+            response = requests.get(url, params)
+            if response.status_code == 200:
+                # XML 응답이므로 JSON 대신 텍스트로 처리
+                if "LIMITED_NUMBER_OF_SERVICE_REQUESTS_EXCEEDS_ERROR" in response.text:
+                    print("요청 한도를 초과했습니다. 잠시 후 다시 시도하세요.")
+                    return None
+            else:
+                print(f"요청 실패: {response.status_code}")
+                return None
+            
+            df = tools.json2df(response_json=response.json())
+            result = pd.concat([result, df])
+
+        except:
+            print('No data')
+            break
+        
+
+    # 말이 첫 경기를 치르는 경우
+    if result.empty:
+        pass
+    # 경주기록이 있는 경우 Feature 추가
+    else:
+        if rcDate == None:
+            pass
+        else:
+            result = result[result['rcDate'] <= rcDate]
+
+        result = result.sort_values(by='rcDate')
+
+        result['speed'] = result['rcDist'] / result['rcTime']
+        result['avg_past_speed'] = result['speed'].expanding().mean().shift(1)
+        result['rcDate_bin'] = result['rcDate'].apply(lambda x: datetime.datetime.strptime(str(x), '%Y%m%d').date())
+        result['rcDate_diff'] = result['rcDate_bin'].diff()
+        result['rcDate_diff'] = result['rcDate_diff'].apply(lambda x: x.days if isinstance(x, pd.Timedelta) else x)
+        result = result.drop(['rcDate_bin'], axis=1)
+    return result
+
+# print(get_hrRecord(hrNo='1005730', rcDate='20031101'))
+# rcResult_df = get_rcResult('20240615')
+# # print(rcResult_df)
+# print('rcResult updated')
+# modelData_df = get_modelData(rcResult_df)
+# print(modelData_df)
+
+# print(get_hrRecord('0041600'))
+# pd.set_option('display.max_columns', None)
+# print(get_hrRecord(hrNo='0041600'))
+# print(get_hrRecord(hrNo='0041600', rcDate=20211225))
+
+# url = 'http://apis.data.go.kr/B551015/API37_1//sectionRecord_1'
+# params = {'serviceKey': decoding_key, 'pageNo': 1, 'numOfRows': 10, 'hr_name':'갤럽컬린', 'hr_no':'0041600', 'meet':'1', 'rc_date':'20220828', 'rc_month':'202208', 'rc_year':'2022', '_type': 'json'}
+# params = tools.exclude_none(params)
+# response = requests.get(url, params)
+# print(response.status_code)
+# # print(response.json())
+# print(get_hrRecord(hrNo='0041600', hrName=None, rcDate='20211225'))
+# print(get_aps_rd(hrNo='0041600', hrName=None, rcDate='20211225'))
+
+
 
 
 '''
@@ -238,19 +309,6 @@ def cal_speed(df):
     df['speed'] = df['rcDist'].astype(int) / df['rcTime'].astype(float)
     return df
 
-
-def calculate_past_avg_speed(df):
-    '''
-    마명별 과거 경기의 평균 속도 계산
-    '''
-    df = cal_speed(df)
-
-    # 경주일자 기준으로 정렬
-    df = df.sort_values(by=['hrName', 'rcDate'])
-
-    
-
-    return df
 
 # rcPlan = get_rcPlan(rc_date='20240615')
 # print(rcPlan)

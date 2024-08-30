@@ -62,11 +62,10 @@ def main(date:str):
 # print(get_daily_rcResult(3, end))
 # update_modelData(start, end)
 
-start ='20240615'
-end = '20240829'
 
-pd.set_option('display.max_columns', None)
-pd.set_option('display.max_rows', None)
+
+start ='20000108'
+end = '20240829'
 
 while start <= end:
     try:
@@ -80,8 +79,8 @@ while start <= end:
         start = start.strftime('%Y%m%d')
         continue
 
-    update_rcResult(rcResult_df)
-    print('rcResult updated')
+    # update_rcResult(rcResult_df)
+    # print('rcResult updated')
     update_modelData(modelData_df)
     print('modelData updated')
     start = datetime.datetime.strptime(start, '%Y%m%d').date() + datetime.timedelta(days=1)
