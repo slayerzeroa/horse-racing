@@ -64,24 +64,30 @@ def main(date:str):
 
 
 
-start ='20000108'
-end = '20240829'
+# start ='20000108'
+# end = '20240829'
 
-while start <= end:
-    try:
-        rcResult_df = (get_rcResult(start))
-        print(rcResult_df)
-        modelData_df = get_modelData(rcResult_df)
-        print(modelData_df)
-    except:
-        print('no data')
-        start = datetime.datetime.strptime(start, '%Y%m%d').date() + datetime.timedelta(days=1)
-        start = start.strftime('%Y%m%d')
-        continue
 
+rcResult_df = load_rcResult()
+
+rcDate_list = rcResult_df['rcDate'].unique()
+rcDate_list = sorted(rcDate_list)
+
+print(rcDate_list)
+
+for rcdate in rcDate_list:
+    # try:
+    #     rcResult_df_temp = rcResult_df[rcResult_df['rcDate'] == rcdate]
+    #     print(rcResult_df_temp)
+    #     modelData_df = get_modelData(rcResult_df_temp)
+    #     print(modelData_df)
+    # except:
+    #     continue
+    rcResult_df_temp = rcResult_df[rcResult_df['rcDate'] == rcdate]
+    print(rcResult_df_temp)
+    modelData_df = get_modelData(rcResult_df_temp)
+    print(modelData_df)
     # update_rcResult(rcResult_df)
     # print('rcResult updated')
     update_modelData(modelData_df)
     print('modelData updated')
-    start = datetime.datetime.strptime(start, '%Y%m%d').date() + datetime.timedelta(days=1)
-    start = start.strftime('%Y%m%d')

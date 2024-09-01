@@ -133,7 +133,7 @@ def get_rcDate(start:str=None, end:str=None, meet:str=None):
 
 # average past speed, rcDate_diff
 def get_aps_rd(hrNo:str, hrName:str=None, rcDate:str=None):
-    df = get_hrRecord(hrNo=hrNo, hrName=hrName, rcDate=rcDate)
+    df = get_hrRecord_sql(hrNo=hrNo, hrName=hrName, rcDate=rcDate)
     if df.empty:
         return -99999, 99999
     return df['avg_past_speed'].iloc[-1], df['rcDate_diff'].iloc[-1]
@@ -168,34 +168,42 @@ def get_modelData(rcmodelData_df:pd.DataFrame):
     return rcmodelData_df
 
 
-def get_hrRecord_sql(hrNo:str, hrName:str=None):
+def get_hrRecord_sql(hrNo:str, hrName:str=None, rcDate:str=None):
 
     '''
-    240829 현재 500 internal server error 발생
     SQL을 이용하여 hrRecord를 가져오는 함수
     '''
     result = pd.DataFrame()
-    # url = 'http://apis.data.go.kr/B551015/API37_1//sectionRecord_1'
 
+    # 데이터베이스 연결
     host, user, password, db = tools.get_env('DB')
     conn = pymysql.connect(host=host, user=user, password=password, db=db, charset='utf8mb4')
     curs = conn.cursor()
 
-    curs.execute("SELECT * FROM rcResult WHERE hrNo = %s", (hrNo,))
+    # hrNo를 기준으로 경주 기록 조회
+    query = "SELECT * FROM rcResult WHERE hrNo = %s"
+    curs.execute(query, (hrNo,))
     hrRecord_df = pd.DataFrame(curs.fetchall(), columns=[col[0] for col in curs.description])
 
+    # 연결 종료
     conn.close()
 
+    # 결과 DataFrame에 추가
     result = pd.concat([result, hrRecord_df])
 
+    # rcDist와 rcTime의 데이터 타입을 변환
     result['rcDist'] = result['rcDist'].astype(int)
     result['rcTime'] = result['rcTime'].astype(float)
 
-    # print(result)
     # 말이 첫 경기를 치르는 경우
     if result.empty:
         pass
     else:
+        if rcDate is not None:
+            result = result[result['rcDate'] <= rcDate]
+
+        result = result.sort_values(by='rcDate')
+
         result['speed'] = result['rcDist'] / result['rcTime']
         result['avg_past_speed'] = result['speed'].expanding().mean().shift(1)
         result['rcDate_bin'] = result['rcDate'].apply(lambda x: datetime.datetime.strptime(str(x), '%Y%m%d').date())
@@ -205,7 +213,9 @@ def get_hrRecord_sql(hrNo:str, hrName:str=None):
 
         result['rcDate_diff'] = result['rcDate_diff'].fillna(99999)
         result['avg_past_speed'] = result['avg_past_speed'].fillna(-99999)
+
     return result
+
 
 def get_hrRecord(hrNo:str, hrName:str=None, rcDate:str=None):
     url = 'http://apis.data.go.kr/B551015/API37_1/sectionRecord_1'
